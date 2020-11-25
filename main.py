@@ -1,6 +1,7 @@
 import os
 import pytesseract
 from PIL import Image
+from queue import Queue
 from collections import defaultdict
 
 
@@ -44,6 +45,21 @@ def cut_noise(image):
     return image
 
 
+def img_crop(image):
+    rows, cols = image.size
+    colsPosition = []
+    isXOver = False
+    for row in range(rows):
+        for col in range(cols):
+            if image.getpixel((row, col)) == 0 and not isXOver:
+                isXOver = True
+                colsPosition.append(row)
+            elif image.getpixel((row, col)) == 1 and isXOver:
+                isXOver = False
+    print(colsPosition)
+    return image
+
+
 def OCR_lmj(dir, file):
     image = Image.open('%s/%s' % (dir, file))
     imgry = image.convert('L')
@@ -58,6 +74,7 @@ def OCR_lmj(dir, file):
     out = cut_noise(out)
     out = cut_noise(out)
     out = cut_noise(out)
+    out = img_crop(out)
     out.save('out/%s' % file)
 
     # text = pytesseract.image_to_string(imgry).strip()
