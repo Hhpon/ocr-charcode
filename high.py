@@ -240,7 +240,6 @@ def cfs(im, x_fd, y_fd):
         xmin = min(xaxis)
         ymax = max(yaxis)
         ymin = min(yaxis)
-        # ymin,ymax=sort(yaxis)
 
     return ymax, ymin, xmax, xmin
 
