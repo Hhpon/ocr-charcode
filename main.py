@@ -66,7 +66,7 @@ def detectFgPix(image, xmax):
     return x_fd,y_fd
     '''
     rows, cols = image.size
-    for row in range(rows):
+    for row in range(xmax, rows):
         for col in range(cols):
             if image.getpixel((row, col)) == 0:
                 return row, col
@@ -77,12 +77,12 @@ def cfs(image, x_fd, y_fd):
     image: PIL图片对象
     x_fd: 本次查找过程中，x轴开始坐标
     y_fd: 本次查找过程中，y轴开始坐标
-    return xmax,xmin,ymax,ymin
+    return xmin,xmax,ymin,ymax
     本次查找过程中与该坐标连接的所有点中在x、y轴方向上的最大最小点
     '''
 
-    xaxis = [x_fd]
-    yaxis = [y_fd]
+    xaxis = [x_fd, x_fd+1]
+    yaxis = [y_fd, y_fd+1]
     q = Queue()
     q.put((x_fd, y_fd))
     visited = set()
@@ -91,14 +91,21 @@ def cfs(image, x_fd, y_fd):
         x, y = q.get()
 
         for xoffset, yoffset in offsets:
-            x_neighbor, y_neighbor = x + xoffset, y+yoffset
-            if (x_neighbor, y_neighbor) not in visited and image.getpixel((x_neighbor, y_neighbor)) == 0:
-                visited.add((x_neighbor, y_neighbor))
-                xaxis.append(x_neighbor)
-                yaxis.append(y_neighbor)
-                q.put((x_neighbor, y_neighbor))
-    # return max(xaxis), min(xaxis), max(yaxis), min(yaxis)
-    return xaxis, yaxis, visited
+            x_neighbor, y_neighbor = x+xoffset, y+yoffset
+            if (x_neighbor, y_neighbor) in visited:
+                continue
+            visited.add((x_neighbor, y_neighbor))
+            try:
+                if image.getpixel((x_neighbor, y_neighbor)) == 0:
+                    xaxis.append(x_neighbor)
+                    yaxis.append(y_neighbor)
+                    q.put((x_neighbor, y_neighbor))
+            except:
+                pass
+    return min(xaxis), max(xaxis), min(yaxis), max(yaxis)
+    # return xaxis, yaxis, visited
+
+# def cut_noise
 
 
 def crop_image(image, x_min, x_max, y_min, y_max):
@@ -111,7 +118,9 @@ def crop_image(image, x_min, x_max, y_min, y_max):
     return crop
     切割之后的图像
     '''
-    return crop = image.crop((x_min, y_min, x_max, y_max))
+    crop = image.crop((x_min, y_min, x_max, y_max))
+    return crop
+
 
 def OCR_lmj(dir, file):
     image = Image.open('%s/%s' % (dir, file))
@@ -127,9 +136,14 @@ def OCR_lmj(dir, file):
     out = cut_noise(out)
     out = cut_noise(out)
     out = cut_noise(out)
-    out = img_crop(out)
-    # crop_img = out.crop((0, 0, 10, 10))
-    # crop_img.save('crop/%s' % file)
+    crop_count = 0
+    xmax = 0
+    while (crop_count < 4):
+        x_fd, y_fd = detectFgPix(out, xmax)
+        xmin, xmax, ymin, ymax = cfs(out, x_fd, y_fd)
+        crop = crop_image(out, xmin, xmax, ymin, ymax)
+        crop.save('crop/%s%s' % (crop_count, file))
+        crop_count += 1
     out.save('out/%s' % file)
 
     # text = pytesseract.image_to_string(imgry).strip()
