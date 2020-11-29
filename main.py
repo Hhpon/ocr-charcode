@@ -3,6 +3,7 @@ import pytesseract
 from PIL import Image
 from queue import Queue
 from collections import defaultdict
+import time
 
 
 def get_threshold(image):
@@ -65,6 +66,7 @@ def detectFgPix(image, xmax):
     搜索区域起点
     return x_fd,y_fd
     '''
+    print('detectFgPix%s' % xmax)
     rows, cols = image.size
     for row in range(xmax, rows):
         for col in range(cols):
@@ -94,18 +96,21 @@ def cfs(image, x_fd, y_fd):
             x_neighbor, y_neighbor = x+xoffset, y+yoffset
             if (x_neighbor, y_neighbor) in visited:
                 continue
-            visited.add((x_neighbor, y_neighbor))
             try:
                 if image.getpixel((x_neighbor, y_neighbor)) == 0:
                     xaxis.append(x_neighbor)
                     yaxis.append(y_neighbor)
                     q.put((x_neighbor, y_neighbor))
+                    visited.add((x_neighbor, y_neighbor))
             except:
                 pass
-    return min(xaxis), max(xaxis), min(yaxis), max(yaxis)
+    return min(xaxis), max(xaxis), min(yaxis), max(yaxis), visited
     # return xaxis, yaxis, visited
 
-# def cut_noise
+
+def cut_noise_block(image, visited):
+    for pos in visited:
+        image.putpixel(pos, 1)
 
 
 def crop_image(image, x_min, x_max, y_min, y_max):
@@ -135,15 +140,24 @@ def OCR_lmj(dir, file):
     out = imgry.point(table, '1')
     out = cut_noise(out)
     out = cut_noise(out)
-    out = cut_noise(out)
+    # out = cut_noise(out)
     crop_count = 0
     xmax = 0
-    while (crop_count < 4):
-        x_fd, y_fd = detectFgPix(out, xmax)
-        xmin, xmax, ymin, ymax = cfs(out, x_fd, y_fd)
-        crop = crop_image(out, xmin, xmax, ymin, ymax)
-        crop.save('crop/%s%s' % (crop_count, file))
-        crop_count += 1
+    while (crop_count < 10):
+        is_skip = False
+        try:
+            x_fd, y_fd = detectFgPix(out, xmax)
+            xmin, xmax, ymin, ymax, visited = cfs(out, x_fd, y_fd)
+            if ((xmax-xmin) < 8 & (ymax-ymin) < 8):
+                cut_noise_block(out, visited)
+            else:
+                crop = crop_image(out, xmin, xmax, ymin, ymax)
+                crop.save('crop/%s%s' % (crop_count, file))
+                is_skip = True
+        except:
+            pass
+        finally:
+            crop_count += 1
     out.save('out/%s' % file)
 
     # text = pytesseract.image_to_string(imgry).strip()
