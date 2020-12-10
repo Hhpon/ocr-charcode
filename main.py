@@ -161,7 +161,8 @@ def OCR_lmj(dir, file):
     out.save('out/%s' % file)
 
     # text = pytesseract.image_to_string(imgry).strip()
-    text = pytesseract.image_to_string(out).strip()
+    text = pytesseract.image_to_string(
+        out, lang='num', config='--psm 3').strip()
     exclude_char_list = ' .:\\|\'\"?![],()~@#$%^&*_+-={};<>/¥'
     text = ''.join([x for x in text if x not in exclude_char_list])
 
